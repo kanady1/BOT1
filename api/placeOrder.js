@@ -1,18 +1,36 @@
-document.getElementById('submitOrder').addEventListener('click', async () => {
-  const apiKey = document.getElementById('apiKey').value;
-  const apiSecret = document.getElementById('apiSecret').value;
-  const symbol = document.getElementById('symbol').value;
-  const side = document.getElementById('side').value;
-  const quantity = document.getElementById('quantity').value;
+import crypto from 'crypto';
+import fetch from 'node-fetch';
 
-  const response = await fetch('/api/placeOrder', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ apiKey, apiSecret, symbol, side, quantity })
-  });
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-  const result = await response.json();
-  document.getElementById('result').textContent = JSON.stringify(result, null, 2);
-});
+  try {
+    const { apiKey, apiSecret, symbol, side, quantity } = req.body;
+    const timestamp = Date.now();
+
+    const query = symbol=${symbol}&side=${side}&type=MARKET&quantity=${quantity}&timestamp=${timestamp};
+    const signature = crypto.createHmac('sha256', apiSecret).update(query).digest('hex');
+    const url = https://api.binance.com/api/v3/order?${query}&signature=${signature};
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-MBX-APIKEY': apiKey,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(500).json({ error: data });
+    }
+
+    return res.status(200).json(data);
+
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
